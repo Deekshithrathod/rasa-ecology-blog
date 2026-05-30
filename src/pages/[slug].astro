@@ -1,7 +1,7 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import BaseLayout from '../layouts/BaseLayout.astro';
 import { render } from 'astro:content';
-import { formatDate, getPostSlug, getPostUrl, getPublishedPosts } from '../../utils';
+import { formatDate, getPostSlug, getPostUrl, getPublishedPosts } from '../utils';
 
 export async function getStaticPaths() {
   const posts = await getPublishedPosts();

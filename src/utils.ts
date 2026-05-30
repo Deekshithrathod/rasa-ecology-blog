@@ -19,7 +19,7 @@ export function formatDate(date: Date) {
 }
 
 export function getPostUrl(post: BlogPost) {
-  return `/blog/${getPostSlug(post)}/`;
+  return `/${getPostSlug(post)}/`;
 }
 
 export function getPostSlug(post: BlogPost) {
