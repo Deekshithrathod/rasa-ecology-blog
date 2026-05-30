@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SITE_DESCRIPTION } from '../consts';
+import { formatDate, getPostUrl, getPublishedPosts } from '../utils';
+
+const posts = await getPublishedPosts();
+const featuredPosts = posts.slice(0, 3);
+---
+
+<BaseLayout title="Rasa Ecology Blog" description={SITE_DESCRIPTION}>
+  <section class="hero">
+    <h1>Practical ecology for living soil.</h1>
+    <p>
+      Field notes and clear guides on compost, soil biology, biodiversity, and regenerative
+      growing for people building healthier landscapes.
+    </p>
+  </section>
+
+  <section aria-labelledby="latest-posts">
+    <h2 class="section-heading" id="latest-posts">Latest writing</h2>
+    <div class="post-grid">
+      {
+        featuredPosts.map((post) => (
+          <article class="post-card">
+            {post.data.heroImage && (
+              <img
+                class="post-card__image"
+                src={post.data.heroImage}
+                alt={post.data.heroImageAlt ?? ''}
+                loading="lazy"
+              />
+            )}
+            <div class="post-card__body">
+              <div class="meta">
+                <span>{formatDate(post.data.publishedAt)}</span>
+                <span>{post.data.author}</span>
+              </div>
+              <h3>
+                <a href={getPostUrl(post)}>{post.data.title}</a>
+              </h3>
+              <p>{post.data.description}</p>
+              {post.data.tags.length > 0 && (
+                <ul class="tag-list" aria-label="Post tags">
+                  {post.data.tags.map((tag) => (
+                    <li>
+                      <a href={`/tags/${tag.toLowerCase().replaceAll(' ', '-')}/`}>{tag}</a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </article>
+        ))
+      }
+    </div>
+  </section>
+</BaseLayout>

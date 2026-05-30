@@ -1,0 +1,62 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { render } from 'astro:content';
+import { formatDate, getPostSlug, getPostUrl, getPublishedPosts } from '../../utils';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+
+  return posts.map((post) => ({
+    params: { slug: getPostSlug(post) },
+    props: { post },
+  }));
+}
+
+const { post } = Astro.props;
+const { Content } = await render(post);
+const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.site).toString();
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  canonicalUrl={canonicalUrl}
+  ogTitle={post.data.ogTitle ?? post.data.title}
+  ogDescription={post.data.ogDescription ?? post.data.description}
+  ogImage={post.data.ogImage ?? post.data.heroImage}
+>
+  <article class="article">
+    <header class="article-header">
+      <div class="meta">
+        <span>{formatDate(post.data.publishedAt)}</span>
+        {post.data.updatedAt && <span>Updated {formatDate(post.data.updatedAt)}</span>}
+        <a href={`/authors/${post.data.author.toLowerCase()}/`}>{post.data.author}</a>
+      </div>
+      <h1>{post.data.title}</h1>
+      <p class="article-description">{post.data.description}</p>
+      {post.data.tags.length > 0 && (
+        <ul class="tag-list" aria-label="Post tags">
+          {post.data.tags.map((tag) => (
+            <li>
+              <a href={`/tags/${tag.toLowerCase().replaceAll(' ', '-')}/`}>{tag}</a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </header>
+
+    {
+      post.data.heroImage && (
+        <img
+          class="article-hero"
+          src={post.data.heroImage}
+          alt={post.data.heroImageAlt ?? ''}
+        />
+      )
+    }
+
+    <div class="article-body">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>

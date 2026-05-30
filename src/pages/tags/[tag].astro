@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatDate, getPostUrl, getPublishedPosts } from '../../utils';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  const tags = Array.from(new Set(posts.flatMap((post) => post.data.tags)));
+
+  return tags.map((tag) => ({
+    params: { tag: tag.toLowerCase().replaceAll(' ', '-') },
+    props: {
+      tag,
+      posts: posts.filter((post) => post.data.tags.includes(tag)),
+    },
+  }));
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<BaseLayout title={`Posts tagged ${tag}`} description={`Rasa Ecology articles tagged ${tag}.`}>
+  <h1 class="section-heading">Posts tagged {tag}</h1>
+  <div class="listing">
+    {
+      posts.map((post) => (
+        <article>
+          <div class="meta">
+            <span>{formatDate(post.data.publishedAt)}</span>
+            <span>{post.data.author}</span>
+          </div>
+          <h2>
+            <a href={getPostUrl(post)}>{post.data.title}</a>
+          </h2>
+          <p>{post.data.description}</p>
+        </article>
+      ))
+    }
+  </div>
+</BaseLayout>

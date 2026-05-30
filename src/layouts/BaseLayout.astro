@@ -1,0 +1,68 @@
+---
+import '../styles/global.css';
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from '../consts';
+
+interface Props {
+  title?: string;
+  description?: string;
+  canonicalUrl?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+}
+
+const {
+  title = SITE_TITLE,
+  description = SITE_DESCRIPTION,
+  canonicalUrl = Astro.url.href,
+  ogTitle = title,
+  ogDescription = description,
+  ogImage,
+} = Astro.props;
+
+const pageTitle = title === SITE_TITLE ? SITE_TITLE : `${title} | ${SITE_TITLE}`;
+const absoluteOgImage = ogImage?.startsWith('http')
+  ? ogImage
+  : ogImage
+    ? new URL(ogImage, SITE_URL).toString()
+    : undefined;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="alternate" type="application/rss+xml" title={SITE_TITLE} href="/rss.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={ogTitle} />
+    <meta property="og:description" content={ogDescription} />
+    <meta property="og:url" content={canonicalUrl} />
+    {absoluteOgImage && <meta property="og:image" content={absoluteOgImage} />}
+    <meta name="twitter:card" content={absoluteOgImage ? 'summary_large_image' : 'summary'} />
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="brand" href="/">Rasa Ecology</a>
+          <div class="nav-links">
+            <a href="/blog/">Blog</a>
+            <a href="/tags/">Tags</a>
+            <a href="/rss.xml">RSS</a>
+          </div>
+        </nav>
+      </header>
+      <main class="site-main">
+        <slot />
+      </main>
+      <footer class="site-footer">
+        <span>Rasa Ecology Blog. Practical writing for living soil and ecological growing.</span>
+      </footer>
+    </div>
+  </body>
+</html>

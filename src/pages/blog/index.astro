@@ -1,0 +1,26 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatDate, getPostUrl, getPublishedPosts } from '../../utils';
+
+const posts = await getPublishedPosts();
+---
+
+<BaseLayout title="Blog" description="All published Rasa Ecology articles.">
+  <h1 class="section-heading">Blog</h1>
+  <div class="listing">
+    {
+      posts.map((post) => (
+        <article>
+          <div class="meta">
+            <span>{formatDate(post.data.publishedAt)}</span>
+            <span>{post.data.author}</span>
+          </div>
+          <h2>
+            <a href={getPostUrl(post)}>{post.data.title}</a>
+          </h2>
+          <p>{post.data.description}</p>
+        </article>
+      ))
+    }
+  </div>
+</BaseLayout>
