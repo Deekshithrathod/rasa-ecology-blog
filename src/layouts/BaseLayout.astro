@@ -9,6 +9,7 @@ interface Props {
   ogTitle?: string;
   ogDescription?: string;
   ogImage?: string;
+  twitterImage?: string;
 }
 
 const {
@@ -17,7 +18,8 @@ const {
   canonicalUrl = Astro.url.href,
   ogTitle = title,
   ogDescription = description,
-  ogImage,
+  ogImage = '/og-image.png',
+  twitterImage = '/og-twitter-image.png',
 } = Astro.props;
 
 const pageTitle = title === SITE_TITLE ? SITE_TITLE : `${title} | ${SITE_TITLE}`;
@@ -25,6 +27,11 @@ const absoluteOgImage = ogImage?.startsWith('http')
   ? ogImage
   : ogImage
     ? new URL(ogImage, SITE_URL).toString()
+    : undefined;
+const absoluteTwitterImage = twitterImage?.startsWith('http')
+  ? twitterImage
+  : twitterImage
+    ? new URL(twitterImage, SITE_URL).toString()
     : undefined;
 ---
 
@@ -49,6 +56,9 @@ const absoluteOgImage = ogImage?.startsWith('http')
     <meta property="og:description" content={ogDescription} />
     <meta property="og:url" content={canonicalUrl} />
     {absoluteOgImage && <meta property="og:image" content={absoluteOgImage} />}
+    {absoluteTwitterImage && <meta name="twitter:image" content={absoluteTwitterImage} />}
+    <meta name="twitter:title" content={ogTitle} />
+    <meta name="twitter:description" content={ogDescription} />
     <meta name="twitter:card" content={absoluteOgImage ? 'summary_large_image' : 'summary'} />
   </head>
   <body>

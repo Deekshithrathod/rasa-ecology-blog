@@ -30,17 +30,6 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
     {
       tocHeadings.length > 1 && (
         <>
-          <nav class="toc" aria-label="Table of contents">
-            <p class="toc__title">On this page</p>
-            <ul>
-              {tocHeadings.map((heading) => (
-                <li class={`toc__item toc__item--d${heading.depth}`}>
-                  <a href={`#${heading.slug}`}>{heading.text}</a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
           <button
             class="toc-fab"
             type="button"
@@ -50,12 +39,9 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
             aria-label="Open table of contents"
           >
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <circle cx="4" cy="6" r="1.4" />
-              <circle cx="4" cy="12" r="1.4" />
-              <circle cx="4" cy="18" r="1.4" />
-              <line x1="9" y1="6" x2="20" y2="6" />
-              <line x1="9" y1="12" x2="20" y2="12" />
-              <line x1="9" y1="18" x2="16" y2="18" />
+              <line x1="4" y1="7" x2="20" y2="7" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="17" x2="20" y2="17" />
             </svg>
           </button>
 
@@ -69,12 +55,10 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
                 </svg>
               </button>
               <p class="toc-modal__title">On this page</p>
-              <ul class="toc-rays">
+              <ul class="toc-list">
                 {tocHeadings.map((heading, index) => (
-                  <li class={`toc-rays__item toc-rays__item--d${heading.depth}`} style={`--ray-index: ${index}`}>
-                    <a href={`#${heading.slug}`} data-toc-close>
-                      {heading.text}
-                    </a>
+                  <li class={`toc-list__item toc-list__item--d${heading.depth}`} style={`--ray-index: ${index}`}>
+                    <a href={`#${heading.slug}`} data-toc-close>{heading.text}</a>
                   </li>
                 ))}
               </ul>
@@ -108,35 +92,6 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
 </BaseLayout>
 
 <script>
-  const tocLinks = Array.from(
-    document.querySelectorAll<HTMLAnchorElement>('.toc a[href^="#"]'),
-  );
-
-  if (tocLinks.length > 0) {
-    const linkByHeading = new Map<Element, HTMLAnchorElement>();
-    for (const link of tocLinks) {
-      const target = document.getElementById(decodeURIComponent(link.hash.slice(1)));
-      if (target) linkByHeading.set(target, link);
-    }
-
-    const setActive = (active: HTMLAnchorElement) => {
-      for (const link of tocLinks) link.classList.toggle('is-active', link === active);
-    };
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const link = linkByHeading.get(entry.target);
-          if (link) setActive(link);
-        }
-      },
-      { rootMargin: '0px 0px -80% 0px', threshold: 0 },
-    );
-
-    for (const heading of linkByHeading.keys()) observer.observe(heading);
-  }
-
   const tocFab = document.querySelector<HTMLButtonElement>('.toc-fab');
   const tocModal = document.querySelector<HTMLElement>('.toc-modal');
 
@@ -161,12 +116,35 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
     tocModal.addEventListener('click', (event) => {
       const closer = (event.target as Element).closest('[data-toc-close]');
       if (!closer) return;
-      // A heading link navigates to a section, so let focus follow the scroll.
       closeModal(closer.tagName !== 'A');
     });
 
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closeModal();
     });
+
+    // Scroll-spy: highlight the section currently in view.
+    const links = Array.from(tocModal.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'));
+    if (links.length > 0) {
+      const linkByHeading = new Map<Element, HTMLAnchorElement>();
+      for (const link of links) {
+        const heading = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+        if (heading) linkByHeading.set(heading, link);
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (!entry.isIntersecting) continue;
+            const link = linkByHeading.get(entry.target);
+            if (!link) continue;
+            for (const other of links) other.classList.toggle('is-active', other === link);
+          }
+        },
+        { rootMargin: '0px 0px -80% 0px', threshold: 0 },
+      );
+
+      for (const heading of linkByHeading.keys()) observer.observe(heading);
+    }
   }
 </script>

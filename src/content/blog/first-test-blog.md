@@ -6,12 +6,13 @@ status: "Published"
 tags: ["beginner"]
 publishedAt: "2026-05-29"
 updatedAt: "2026-05-30"
+heroImage: "/notion-assets/first-test-blog-hero.png"
 targetKeyword: "Omy glawd"
 ---
 
-# Why We Started Rasa Ecology
+## Why We Started Rasa Ecology
 
-We started Rasa Ecology because both of us have always been deeply interested in technology, systems, and the way small changes can create large outcomes.
+We started Rasa Ecology because both of us have always been deeply interested in technology, systems, and the way small changes can create large outcomes. Lightening McQueen 
 
 At first, that interest showed up through software, tools, automation, and digital products. We liked building things. We liked understanding how one part connects to another. We liked the feeling of taking something messy and making it useful, clear, and scalable.
 
@@ -177,7 +178,7 @@ Not technology that separates people from nature.
 
 Technology that helps people work more intelligently with nature.
 
-![Notion image](https://prod-files-secure.s3.us-west-2.amazonaws.com/bbb3c91d-8551-4c0a-83d9-ff4b306c03bc/e6532a6f-9f2b-4fff-b766-869dba4e0bdd/RASA-Blog-Hero.gif?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAZI2LB466SJPG5SGC%2F20260530%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20260530T083507Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEBAaCXVzLXdlc3QtMiJHMEUCIF%2F9rN2ZV0yCvbsJQLub7OYJzIxxV7duN4MCspk7aECCAiEA%2F%2BhaOMWgYXYHiVvnTEt2Dxm%2FS3NPmxAakVQNv1Ha%2BHwqiAQI2f%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAAGgw2Mzc0MjMxODM4MDUiDAIN9WeKUQXf4GXmqircA7gd6L6vNAHo82T65JkhzhxhUcO2RzuKnfW70qIRakWKntJcwMwHUJ53IjNKmw%2F2xm97VH65O9xQIMmQK1eIYGHyNibMdWtDMOIYgElb6kZT5rK%2FhIreIuMlvKyBNJLYPqFfd%2BfpHc9lG3CD%2BGRxyQd2dUkEA9uOHqpLiCN9EVoBPVL5G2XdH0noKIHhodpCadsDIQwVTPlua5IBmPlzMGBV7TjXpYiXLAeVQSS0YEj%2FFmJ%2BGOAKJDk5EhS03W5ZrijoKYK64E9Ph0loTxWfUQ7pk7XT8uIaf%2BJY0BeFn0uOPExDjOqlNJ4V8HVErR42aUhiPBPEOoGf5RlZigA%2Fa9YqNJPmNR%2BTemzTK0%2Bs3UI18snmEvmVnSlxnk4FUWr4QiD3jBjtzVZVFFTZqDC%2Bj0XTZGFtF4iLMZPCXvwI3xUDxqGGjeKIqVOZ03z0QlCmhrsDK%2FUHBfWfPGSK%2BP8sRC53isg%2FWyx7uinmXNetU%2Bn0i%2BbT7U5jle%2B33IwnOMSSMfEyOq3M8Ffc1R1v4O33zod303tk7G3mdZGiwM98JfIOlkwFLWUnxFO%2FK%2F5HNU0wST4IfuTKby%2B1h5pahI1FG1aw3rPMYbROgV6nLUJxy7FDkD%2FRCxU0oTA3W3UQMJKr6tAGOqUBtGXAKW9t2n03Fg%2BlP3U%2FnvXAVSKrD8iSZrX4%2BVnOGIsH9biAD4aj4Jz9CVttY2Qqpb708vAmNyH%2BsTpbhRT2GUJaoP5lxzKmchoGTibD1g1DRAhG9PI3qzL8FHtycI%2BytnTJynG8p%2B1TIRY%2BNzzmnBI4XW7%2FyvXQPIRzj0hvsXJ%2By7REOrQeHJbhvY%2FW7dpHhL9Y0RqaexxF%2FCInA5im0gsAhBnc&X-Amz-Signature=01aaf0f13cf9c6b61abc30bb6b4dd7fdc133adb1557b3dd531a37a328664143a&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+![Notion image](/notion-assets/first-test-blog-image-1.gif)
 
 ## Why Soil Is Our Starting Point
 
@@ -265,7 +266,7 @@ Useful enough for a farmer managing real land and real costs.
 
 Clear enough for a student, a homeowner, a buyer, or a community member to understand why soil health matters.
 
-![Notion image](https://prod-files-secure.s3.us-west-2.amazonaws.com/bbb3c91d-8551-4c0a-83d9-ff4b306c03bc/07da81e1-0b21-4e98-9707-dc55ee336b2c/image.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAZI2LB466U6OL2G3W%2F20260530%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20260530T083507Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEBAaCXVzLXdlc3QtMiJGMEQCIA7tVZfHkPIISPqJyXcKKt2FavmbKZum4j0y0kKnVomNAiAqhtNPOJorxsncWW%2Fp4zI3tov0EewVUyYZ88OAnt8mDSqIBAjZ%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8BEAAaDDYzNzQyMzE4MzgwNSIMK7secSGPJ6h5S%2FNAKtwDVuwvlPcJObrB11TVXAOIlvUTKix1PjWPpm9ViZbaAAknA6XPqKV8uFQEf7yePpz1DKhfw5M3DsIftw%2FYNOUAot1CZUYgiKAzevS6JOm%2BFd6tYGteOiJ3E3m%2BPqxDqvsuitJcmBYCstjOt7zCMNQmlalsg863XOYLu8K%2BSDhkkq8SAbSlwjt%2FV77K%2BfI9%2BdSwOkPGoitIJCNnOwqkMpNVrPE0vZpp%2Fl7%2FzVwwknHVi7sbKbjkpW6Rkg8sjs0Q2cE%2F2u1P%2BYR1lHVAyKM%2Bh%2FTBapwLlUC2u%2FenLaepICZrOLIN7xo8voLexxvSrRfrXSs3J%2F%2B9hZ8r2V7Wk7rZpb%2BbQ8ryLkFLUS%2BZNffWwwAc8VRPpEZNRdXxEgRy9kdQBm8xWTOBgSL0fMbnrtOSYfvHpY2q3pAS0%2FmmJf1Qt7iBxg%2F%2FjzhLeq3RD6UU701SJAb8AA1KoY8abECkYWvJFDeKM62mHuzdb5XFGcm28BTDKS41hbdgiQXnVSdO4DYV1cP8d1uB0gSM3DtiRcAj8QdNQnqmMgZH9tcIk32zBF1JADR8F9Gru6qMINXSuMuy1aw76wYio8AWvjQnelKotJfKremUp7Yi3sMQnrjUFOSpdVn2T%2Ff8vYffMsWO74cwt6vq0AY6pgFx5PwtllixLl8iq%2F7F7%2FcChfMfy36Qb2hnKWWTC2UlRJXrq4Cc41PUptFvl82Ccr9cbhBi31%2BymGKSI5NBL5z2FxTRMuuUS8k6QfGxJs0tqD6o0j3qi4sLtyZMSx4FY6hhIda%2FFDGA2tq1JGddEXNbEqcyNrFP8JScAA9%2F0qBhD9wWHtVc1TZP9vtyl0BwUU7dfRB478DDTUl%2FCV95eZ3EIKz3ScTS&X-Amz-Signature=005f3c429b4730f5135dfbc0675065a8eb40995d560dc7b43bc96c2a56597664&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+![Notion image](/notion-assets/first-test-blog-image-2.png)
 
 ## The Kind of Voice We Want to Have
 
