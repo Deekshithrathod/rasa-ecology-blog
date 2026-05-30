@@ -83,6 +83,11 @@ const firstFileUrl = (property) => {
   return file.type === 'external' ? file.external.url : file.file.url;
 };
 
+const coverImageUrl = (cover) => {
+  if (!cover) return undefined;
+  return cover.type === 'external' ? cover.external?.url : cover.file?.url;
+};
+
 const slugify = (value) =>
   value
     .toLowerCase()
@@ -95,27 +100,36 @@ const yamlString = (value) => JSON.stringify(value ?? '');
 
 const yamlArray = (values) => `[${values.map((value) => yamlString(value)).join(', ')}]`;
 
-const localNotionAsset = async (url, slug) => {
-  if (!url || !url.includes('prod-files-secure.s3')) return url;
+// Notion-hosted files use signed URLs that expire after ~1 hour, so they must be
+// downloaded into the build. External URLs are stable and pass through unchanged.
+const downloadNotionAsset = async (url, slug, name) => {
+  if (!url) return undefined;
+  if (!url.includes('prod-files-secure.s3')) return url;
 
-  try {
-    const parsedUrl = new URL(url);
-    const extension = path.extname(parsedUrl.pathname) || '.jpg';
-    const fileName = `${slug}-hero${extension}`;
-    const destination = path.join(assetDir, fileName);
-    const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
+  const parsedUrl = new URL(url);
+  const extension = path.extname(parsedUrl.pathname) || '.jpg';
+  const fileName = `${slug}-${name}${extension}`;
+  const destination = path.join(assetDir, fileName);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  // Large assets (GIFs, hero images) can be slow; retry once before giving up.
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      await mkdir(assetDir, { recursive: true });
+      await writeFile(destination, Buffer.from(await response.arrayBuffer()));
+
+      return `/notion-assets/${fileName}`;
+    } catch (error) {
+      if (attempt === 2) {
+        console.warn(`Skipping Notion asset for ${slug} (${name}): ${error.message}`);
+        return undefined;
+      }
     }
-
-    await mkdir(assetDir, { recursive: true });
-    await writeFile(destination, Buffer.from(await response.arrayBuffer()));
-
-    return `/notion-assets/${fileName}`;
-  } catch (error) {
-    console.warn(`Skipping Notion asset for ${slug}: ${error.message}`);
-    return undefined;
   }
 };
 
@@ -145,7 +159,8 @@ const blockChildren = async (blockId) => {
   return blocks;
 };
 
-const blockToMarkdown = async (block, listIndex = 1) => {
+const blockToMarkdown = async (block, context = {}) => {
+  const { listIndex = 1, slug } = context;
   const type = block.type;
   const value = block[type];
 
@@ -169,9 +184,11 @@ const blockToMarkdown = async (block, listIndex = 1) => {
     case 'code':
       return `\`\`\`${value.language === 'plain text' ? '' : value.language}\n${richTextToMarkdown(value.rich_text)}\n\`\`\``;
     case 'image': {
-      const url = value.type === 'external' ? value.external.url : value.file.url;
+      const sourceUrl = value.type === 'external' ? value.external.url : value.file.url;
       const caption = richTextToMarkdown(value.caption) || 'Notion image';
-      return `![${caption}](${url})`;
+      context.imageCount = (context.imageCount ?? 0) + 1;
+      const localUrl = await downloadNotionAsset(sourceUrl, slug, `image-${context.imageCount}`);
+      return `![${caption}](${localUrl ?? sourceUrl})`;
     }
     case 'divider':
       return '---';
@@ -180,18 +197,18 @@ const blockToMarkdown = async (block, listIndex = 1) => {
   }
 };
 
-const pageBodyToMarkdown = async (pageId) => {
+const pageBodyToMarkdown = async (pageId, slug) => {
   const blocks = await blockChildren(pageId);
   const lines = [];
-  let numberedIndex = 1;
+  const context = { slug, listIndex: 1, imageCount: 0 };
 
   for (const block of blocks) {
-    const line = await blockToMarkdown(block, numberedIndex);
+    const line = await blockToMarkdown(block, context);
 
     if (block.type === 'numbered_list_item') {
-      numberedIndex += 1;
+      context.listIndex += 1;
     } else {
-      numberedIndex = 1;
+      context.listIndex = 1;
     }
 
     if (line) lines.push(line);
@@ -211,7 +228,8 @@ const frontmatterForPage = async (page) => {
   const notionStatus = plainText(properties.Status) || 'Draft';
   const status = publishedStatuses.has(notionStatus) ? 'Published' : notionStatus;
   const tags = multiSelect(properties.Tags);
-  const heroImage = await localNotionAsset(firstFileUrl(properties['Hero Image']), slug);
+  const heroSource = firstFileUrl(properties['Hero Image']) ?? coverImageUrl(page.cover);
+  const heroImage = await downloadNotionAsset(heroSource, slug, 'hero');
   const targetKeyword = plainText(properties['Target Keyword']);
 
   const lines = [
@@ -266,7 +284,7 @@ const pages = await queryPublishedPages();
 
 for (const page of pages) {
   const { slug, frontmatter } = await frontmatterForPage(page);
-  const body = await pageBodyToMarkdown(page.id);
+  const body = await pageBodyToMarkdown(page.id, slug);
   const content = `${frontmatter}\n\n${body || '_This post has no body content yet._'}\n`;
   const destination = path.join(outputDir, `${slug}.md`);
 
