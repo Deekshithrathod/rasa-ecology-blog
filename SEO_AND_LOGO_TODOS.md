@@ -3,9 +3,9 @@
 ## Logo
 
 - [x] Add the correctly oriented Rasa logo asset to `public/`.
-- [ ] Replace the text-only header brand with the logo plus accessible text.
+- [x] Replace the text-only header brand with the logo plus accessible text.
 - [x] Add favicon and app icon variants if the source logo supports it.
-- [ ] Verify the logo renders correctly on desktop and mobile.
+- [x] Verify the logo renders correctly on desktop and mobile.
 
 ## Open Graph Metadata
 

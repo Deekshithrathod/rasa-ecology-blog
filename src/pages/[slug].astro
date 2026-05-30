@@ -13,7 +13,8 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
+const tocHeadings = headings.filter((heading) => heading.depth >= 1 && heading.depth <= 3);
 const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.site).toString();
 ---
 
@@ -26,6 +27,62 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
   ogImage={post.data.ogImage ?? post.data.heroImage}
 >
   <article class="article">
+    {
+      tocHeadings.length > 1 && (
+        <>
+          <nav class="toc" aria-label="Table of contents">
+            <p class="toc__title">On this page</p>
+            <ul>
+              {tocHeadings.map((heading) => (
+                <li class={`toc__item toc__item--d${heading.depth}`}>
+                  <a href={`#${heading.slug}`}>{heading.text}</a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          <button
+            class="toc-fab"
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded="false"
+            aria-controls="toc-modal"
+            aria-label="Open table of contents"
+          >
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="4" cy="6" r="1.4" />
+              <circle cx="4" cy="12" r="1.4" />
+              <circle cx="4" cy="18" r="1.4" />
+              <line x1="9" y1="6" x2="20" y2="6" />
+              <line x1="9" y1="12" x2="20" y2="12" />
+              <line x1="9" y1="18" x2="16" y2="18" />
+            </svg>
+          </button>
+
+          <div class="toc-modal" id="toc-modal" role="dialog" aria-modal="true" aria-label="On this page">
+            <div class="toc-modal__backdrop" data-toc-close />
+            <div class="toc-modal__panel">
+              <button class="toc-modal__close" type="button" data-toc-close aria-label="Close table of contents">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                </svg>
+              </button>
+              <p class="toc-modal__title">On this page</p>
+              <ul class="toc-rays">
+                {tocHeadings.map((heading, index) => (
+                  <li class={`toc-rays__item toc-rays__item--d${heading.depth}`} style={`--ray-index: ${index}`}>
+                    <a href={`#${heading.slug}`} data-toc-close>
+                      {heading.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </>
+      )
+    }
     <header class="article-header">
       <h1>{post.data.title}</h1>
       <div class="meta">
@@ -49,3 +106,67 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
     </div>
   </article>
 </BaseLayout>
+
+<script>
+  const tocLinks = Array.from(
+    document.querySelectorAll<HTMLAnchorElement>('.toc a[href^="#"]'),
+  );
+
+  if (tocLinks.length > 0) {
+    const linkByHeading = new Map<Element, HTMLAnchorElement>();
+    for (const link of tocLinks) {
+      const target = document.getElementById(decodeURIComponent(link.hash.slice(1)));
+      if (target) linkByHeading.set(target, link);
+    }
+
+    const setActive = (active: HTMLAnchorElement) => {
+      for (const link of tocLinks) link.classList.toggle('is-active', link === active);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const link = linkByHeading.get(entry.target);
+          if (link) setActive(link);
+        }
+      },
+      { rootMargin: '0px 0px -80% 0px', threshold: 0 },
+    );
+
+    for (const heading of linkByHeading.keys()) observer.observe(heading);
+  }
+
+  const tocFab = document.querySelector<HTMLButtonElement>('.toc-fab');
+  const tocModal = document.querySelector<HTMLElement>('.toc-modal');
+
+  if (tocFab && tocModal) {
+    const openModal = () => {
+      tocModal.classList.add('is-open');
+      tocFab.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
+      tocModal.querySelector<HTMLButtonElement>('.toc-modal__close')?.focus();
+    };
+
+    const closeModal = (returnFocus = true) => {
+      if (!tocModal.classList.contains('is-open')) return;
+      tocModal.classList.remove('is-open');
+      tocFab.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+      if (returnFocus) tocFab.focus();
+    };
+
+    tocFab.addEventListener('click', openModal);
+
+    tocModal.addEventListener('click', (event) => {
+      const closer = (event.target as Element).closest('[data-toc-close]');
+      if (!closer) return;
+      // A heading link navigates to a section, so let focus follow the scroll.
+      closeModal(closer.tagName !== 'A');
+    });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeModal();
+    });
+  }
+</script>
