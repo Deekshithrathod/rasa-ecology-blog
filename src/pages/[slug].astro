@@ -27,22 +27,11 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
 >
   <article class="article">
     <header class="article-header">
-      <div class="meta">
-        <span>{formatDate(post.data.publishedAt)}</span>
-        {post.data.updatedAt && <span>Updated {formatDate(post.data.updatedAt)}</span>}
-        <a href={`/authors/${post.data.author.toLowerCase()}/`}>{post.data.author}</a>
-      </div>
       <h1>{post.data.title}</h1>
-      <p class="article-description">{post.data.description}</p>
-      {post.data.tags.length > 0 && (
-        <ul class="tag-list" aria-label="Post tags">
-          {post.data.tags.map((tag) => (
-            <li>
-              <a href={`/tags/${tag.toLowerCase().replaceAll(' ', '-')}/`}>{tag}</a>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div class="meta">
+        by <a href={`/authors/${post.data.author.toLowerCase()}/`}>{post.data.author}</a> | 
+        <span>{formatDate(post.data.publishedAt)}</span>
+      </div>
     </header>
 
     {
