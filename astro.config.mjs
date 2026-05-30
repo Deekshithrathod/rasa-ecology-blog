@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://rasaecology.com',
+  site: 'https://blog.rasaecology.com',
   integrations: [sitemap()],
   output: 'static',
 });
