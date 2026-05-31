@@ -4,3 +4,6 @@ dist/
 .env
 .env.*
 !.env.example
+public/notion-assets/*
+.claude/*
+.DS_Store
