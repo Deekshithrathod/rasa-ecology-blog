@@ -35,9 +35,48 @@ if (!token || !databaseId) {
 
 const notion = new Client({ auth: token });
 
+const shareHint =
+  'In Notion, open the database → ••• → Connections → re-add the integration, ' +
+  'then re-run the sync.';
+
+// Since API version 2025-09-03 a database is a container for one or more data
+// sources, and pages are queried per data source. Access is granted per data
+// source too, so a database can be readable while its data sources are not.
 const resolveDataSourceId = async (id) => {
-  const database = await notion.databases.retrieve({ database_id: id });
-  return database.data_sources?.[0]?.id ?? id;
+  let database;
+
+  try {
+    database = await notion.databases.retrieve({ database_id: id });
+  } catch (error) {
+    if (error.code === 'object_not_found') {
+      throw new Error(`Notion database ${id} is not shared with this integration. ${shareHint}`);
+    }
+    throw error;
+  }
+
+  const dataSources = database.data_sources ?? [];
+
+  if (dataSources.length === 0) {
+    throw new Error(`Notion database ${id} reports no data sources. ${shareHint}`);
+  }
+
+  const unreachable = [];
+
+  for (const dataSource of dataSources) {
+    try {
+      await notion.dataSources.query({ data_source_id: dataSource.id, page_size: 1 });
+      return dataSource.id;
+    } catch (error) {
+      if (error.code !== 'object_not_found') throw error;
+      unreachable.push(`  - ${dataSource.name || 'unnamed'} (${dataSource.id})`);
+    }
+  }
+
+  throw new Error(
+    `Notion database ${id} is readable, but none of its data sources are:\n` +
+      `${unreachable.join('\n')}\n` +
+      `The integration's grant does not cover them. ${shareHint}`
+  );
 };
 
 const richTextToMarkdown = (items = []) =>
@@ -280,7 +319,14 @@ const queryPublishedPages = async () => {
 
 await mkdir(outputDir, { recursive: true });
 
-const pages = await queryPublishedPages();
+let pages;
+
+try {
+  pages = await queryPublishedPages();
+} catch (error) {
+  console.error(`Notion sync failed: ${error.message}`);
+  process.exit(1);
+}
 
 for (const page of pages) {
   const { slug, frontmatter } = await frontmatterForPage(page);
