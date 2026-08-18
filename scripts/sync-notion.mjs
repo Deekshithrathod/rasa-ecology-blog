@@ -198,8 +198,8 @@ const blockChildren = async (blockId) => {
   return blocks;
 };
 
-const blockToMarkdown = async (block, context = {}) => {
-  const { listIndex = 1, slug } = context;
+const blockToMarkdown = async (block, context, listIndex) => {
+  const { slug } = context;
   const type = block.type;
   const value = block[type];
 
@@ -236,24 +236,53 @@ const blockToMarkdown = async (block, context = {}) => {
   }
 };
 
-const pageBodyToMarkdown = async (pageId, slug) => {
-  const blocks = await blockChildren(pageId);
+const indentLines = (text, indent) =>
+  text
+    .split('\n')
+    .map((line) => (line ? `${indent}${line}` : line))
+    .join('\n');
+
+// Columns exist only as Notion layout. Markdown has no equivalent, so a
+// column_list and its columns contribute nothing themselves and their children
+// are flattened into the surrounding document flow.
+const layoutTypes = new Set(['column_list', 'column']);
+
+const renderBlocks = async (blocks, context, indent = '') => {
   const lines = [];
-  const context = { slug, listIndex: 1, imageCount: 0 };
+  let listIndex = 1;
 
   for (const block of blocks) {
-    const line = await blockToMarkdown(block, context);
+    const children = block.has_children ? await blockChildren(block.id) : [];
 
-    if (block.type === 'numbered_list_item') {
-      context.listIndex += 1;
-    } else {
-      context.listIndex = 1;
+    if (layoutTypes.has(block.type)) {
+      const flattened = await renderBlocks(children, context, indent);
+      if (flattened) lines.push(flattened);
+      listIndex = 1;
+      continue;
     }
 
-    if (line) lines.push(line);
+    const line = await blockToMarkdown(block, context, listIndex);
+
+    if (block.type === 'numbered_list_item') {
+      listIndex += 1;
+    } else {
+      listIndex = 1;
+    }
+
+    if (line) lines.push(indent ? indentLines(line, indent) : line);
+
+    if (children.length > 0) {
+      const nested = await renderBlocks(children, context, `${indent}  `);
+      if (nested) lines.push(nested);
+    }
   }
 
   return lines.join('\n\n');
+};
+
+const pageBodyToMarkdown = async (pageId, slug) => {
+  const blocks = await blockChildren(pageId);
+  return renderBlocks(blocks, { slug, imageCount: 0 });
 };
 
 const frontmatterForPage = async (page) => {
