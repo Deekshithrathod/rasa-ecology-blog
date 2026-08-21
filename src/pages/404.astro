@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { formatDate, getPostUrl, getPublishedPosts, isoDate } from '../utils';
+
+const posts = (await getPublishedPosts()).slice(0, 5);
+---
+
+<BaseLayout
+  title="Page not found"
+  description="That page does not exist. Browse the latest Rasa Ecology writing instead."
+  noindex
+>
+  <section class="hero">
+    <h1>Page not found</h1>
+    <p>
+      That page does not exist, or it moved. Try the <a href="/">homepage</a>, browse by
+      <a href="/tags/">topic</a>, or pick up one of the recent posts below.
+    </p>
+  </section>
+
+  {
+    posts.length > 0 && (
+      <section aria-labelledby="recent-posts">
+        <h2 class="section-heading" id="recent-posts">
+          Recent writing
+        </h2>
+        <div class="listing">
+          {posts.map((post) => (
+            <article>
+              <div class="meta">
+                <time datetime={isoDate(post.data.publishedAt)}>
+                  {formatDate(post.data.publishedAt)}
+                </time>
+                <span>{post.data.author}</span>
+              </div>
+              <h3>
+                <a href={getPostUrl(post)}>{post.data.title}</a>
+              </h3>
+              <p>{post.data.description}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  }
+</BaseLayout>

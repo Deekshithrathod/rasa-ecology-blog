@@ -1,6 +1,12 @@
 import { Client } from '@notionhq/client';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  excerptFromMarkdown,
+  recordSlug,
+  removeStalePosts,
+  slugify,
+} from './lib/sync-support.mjs';
 
 const loadLocalEnv = async () => {
   try {
@@ -26,7 +32,13 @@ const token = process.env.NOTION_TOKEN;
 const databaseId = process.env.NOTION_DATABASE_ID;
 const outputDir = path.resolve('src/content/blog');
 const assetDir = path.resolve('public/notion-assets');
+const historyPath = path.resolve('data/slug-history.json');
+
+// Notion's own status vocabulary is not fixed, so several spellings map onto the
+// two states the site cares about. Anything else stays out of the build.
 const publishedStatuses = new Set(['Published', 'Done', 'Complete']);
+const previewStatuses = new Set(['Preview', 'In review']);
+const syncedStatuses = new Set([...publishedStatuses, ...previewStatuses]);
 
 if (!token || !databaseId) {
   console.log('Skipping Notion sync: NOTION_TOKEN or NOTION_DATABASE_ID is missing.');
@@ -126,14 +138,6 @@ const coverImageUrl = (cover) => {
   if (!cover) return undefined;
   return cover.type === 'external' ? cover.external?.url : cover.file?.url;
 };
-
-const slugify = (value) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/['"]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
 
 const yamlString = (value) => JSON.stringify(value ?? '');
 
@@ -285,23 +289,40 @@ const pageBodyToMarkdown = async (pageId, slug) => {
   return renderBlocks(blocks, { slug, imageCount: 0 });
 };
 
-const frontmatterForPage = async (page) => {
+const loadSlugHistory = async () => {
+  try {
+    return JSON.parse(await readFile(historyPath, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') return {};
+    throw error;
+  }
+};
+
+const frontmatterForPage = async (page, slug, body) => {
   const properties = page.properties;
   const title = getTitle(properties);
-  const slug = slugify(plainText(properties.Slug) || title);
   const publishedAt = getDate(properties, 'Published Date', new Date().toISOString().slice(0, 10));
   const updatedAt = getDate(properties, 'Updated Date', publishedAt);
-  const description = plainText(properties.Description) || `Imported from Notion: ${title}`;
+  const description =
+    plainText(properties.Description) || excerptFromMarkdown(body) || `${title}.`;
   const author = plainText(properties.Author) || 'Rasa Ecology';
   const notionStatus = plainText(properties.Status) || 'Draft';
-  const status = publishedStatuses.has(notionStatus) ? 'Published' : notionStatus;
+  const status = publishedStatuses.has(notionStatus)
+    ? 'Published'
+    : previewStatuses.has(notionStatus)
+      ? 'Preview'
+      : notionStatus;
   const tags = multiSelect(properties.Tags);
   const heroSource = firstFileUrl(properties['Hero Image']) ?? coverImageUrl(page.cover);
   const heroImage = await downloadNotionAsset(heroSource, slug, 'hero');
+  const heroImageAlt = plainText(properties['Hero Image Alt']);
   const targetKeyword = plainText(properties['Target Keyword']);
 
   const lines = [
     '---',
+    // notionId marks this file as sync-owned. Files without it are hand-authored
+    // and are never rewritten or removed by the sync.
+    `notionId: ${yamlString(page.id)}`,
     `title: ${yamlString(title)}`,
     `description: ${yamlString(description)}`,
     `author: ${yamlString(author)}`,
@@ -312,14 +333,15 @@ const frontmatterForPage = async (page) => {
   ];
 
   if (heroImage) lines.push(`heroImage: ${yamlString(heroImage)}`);
+  if (heroImageAlt) lines.push(`heroImageAlt: ${yamlString(heroImageAlt)}`);
   if (targetKeyword) lines.push(`targetKeyword: ${yamlString(targetKeyword)}`);
 
   lines.push('---');
 
-  return { slug, frontmatter: lines.join('\n') };
+  return lines.join('\n');
 };
 
-const queryPublishedPages = async () => {
+const querySyncablePages = async () => {
   const pages = [];
   let cursor;
   const dataSourceId = await resolveDataSourceId(databaseId);
@@ -338,7 +360,7 @@ const queryPublishedPages = async () => {
     });
 
     pages.push(
-      ...response.results.filter((page) => publishedStatuses.has(plainText(page.properties?.Status)))
+      ...response.results.filter((page) => syncedStatuses.has(plainText(page.properties?.Status)))
     );
     cursor = response.has_more ? response.next_cursor : undefined;
   } while (cursor);
@@ -351,20 +373,64 @@ await mkdir(outputDir, { recursive: true });
 let pages;
 
 try {
-  pages = await queryPublishedPages();
+  pages = await querySyncablePages();
 } catch (error) {
   console.error(`Notion sync failed: ${error.message}`);
   process.exit(1);
 }
 
-for (const page of pages) {
-  const { slug, frontmatter } = await frontmatterForPage(page);
-  const body = await pageBodyToMarkdown(page.id, slug);
-  const content = `${frontmatter}\n\n${body || '_This post has no body content yet._'}\n`;
-  const destination = path.join(outputDir, `${slug}.md`);
+const history = await loadSlugHistory();
+const writtenFiles = new Set();
+const usedSlugs = new Map();
+let previewCount = 0;
 
-  await writeFile(destination, content, 'utf8');
+for (const page of pages) {
+  const title = getTitle(page.properties);
+  let slug = slugify(plainText(page.properties.Slug) || title);
+
+  if (!slug) slug = slugify(page.id);
+
+  // Two posts resolving to one slug would silently overwrite each other.
+  if (usedSlugs.has(slug)) {
+    console.warn(
+      `Duplicate slug "${slug}" from "${title}" collides with "${usedSlugs.get(slug)}". ` +
+        'Set a unique Slug in Notion; skipping this post.'
+    );
+    continue;
+  }
+
+  usedSlugs.set(slug, title);
+  recordSlug(history, page.id, slug, (from, to) => {
+    console.warn(
+      `Slug changed for "${title}": "${from}" → "${to}". The old URL will be redirected.`
+    );
+  });
+
+  const body = await pageBodyToMarkdown(page.id, slug);
+  const frontmatter = await frontmatterForPage(page, slug, body);
+  const content = `${frontmatter}\n\n${body || '_This post has no body content yet._'}\n`;
+  const fileName = `${slug}.md`;
+
+  await writeFile(path.join(outputDir, fileName), content, 'utf8');
+  writtenFiles.add(fileName);
+
+  if (previewStatuses.has(plainText(page.properties.Status))) previewCount += 1;
+
   console.log(`Synced Notion post: ${slug}`);
 }
 
-console.log(`Notion sync complete: ${pages.length} published post(s).`);
+const removed = await removeStalePosts(outputDir, writtenFiles);
+
+for (const entry of removed) {
+  console.log(`Removed unpublished post: ${entry}`);
+}
+
+// Retired slugs only become redirects once this file reaches the build, so it is
+// written on every run and committed by CI when it changes.
+await mkdir(path.dirname(historyPath), { recursive: true });
+await writeFile(historyPath, `${JSON.stringify(history, null, 2)}\n`, 'utf8');
+
+console.log(
+  `Notion sync complete: ${writtenFiles.size - previewCount} published, ` +
+    `${previewCount} preview, ${removed.length} removed.`
+);

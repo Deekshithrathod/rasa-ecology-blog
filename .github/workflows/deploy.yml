@@ -2,14 +2,16 @@ name: Deploy Astro Blog to GitHub Pages
 
 on:
   workflow_dispatch:
+  # Hourly, so "Status = Done" in Notion turns into a live post within the hour.
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 * * * *'
   push:
     branches:
       - main
 
 permissions:
-  contents: read
+  contents: write
+  issues: write
   pages: write
   id-token: write
 
@@ -33,11 +35,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test
+        run: npm test
+
       - name: Sync Notion posts
         run: npm run sync:notion
         env:
           NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
           NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+
+      # Retired slugs only redirect if the history survives the run, so it is
+      # committed back whenever the sync recorded a change. Pushes made with
+      # GITHUB_TOKEN do not retrigger this workflow, so this cannot loop.
+      # Best-effort: a lost race here is re-detected and re-recorded next run,
+      # and must not block a deploy that is otherwise good.
+      - name: Persist slug history
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          if git diff --quiet -- data/slug-history.json; then
+            echo "No slug changes to persist."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/slug-history.json
+          git commit -m "Record Notion slug history [skip ci]"
+          git pull --rebase --autostash origin main
+          git push
 
       - name: Build
         run: npm run build
@@ -46,6 +71,28 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+
+      # The author publishes in Notion and never sees this log, so a failed sync
+      # has to surface somewhere they or the maintainer will actually notice.
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          existing=$(gh issue list --state open --label blog-sync-failure \
+            --json number --jq '.[0].number')
+
+          body=$(printf 'The blog did not publish. A Notion sync or build step failed.\n\nRun: %s\n\nPosts already live are unaffected; the site keeps serving the last good build. Nothing new appears until this is fixed and the workflow reruns.' "$RUN_URL")
+
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh label create blog-sync-failure --color B60205 \
+              --description "Automated blog publish failed" 2>/dev/null || true
+            gh issue create --title "Blog publish failed" \
+              --label blog-sync-failure --body "$body"
+          fi
 
   deploy:
     environment:
