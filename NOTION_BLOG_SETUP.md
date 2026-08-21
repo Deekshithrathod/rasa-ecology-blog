@@ -18,15 +18,49 @@ integration needs access to the data source, not just the database.
 
 - `Name`: post title
 - `Slug`: URL slug, for example `test-blog-from-notion`
-- `Status`: set to `Done` for posts that should deploy. The database offers `Not started`, `In progress`, and `Done`; the sync treats `Done`, `Complete`, and `Published` as publishable and skips everything else.
+- `Status`: set to `Done` for posts that should deploy. The database offers `Not started`, `In progress`, and `Done`; the sync treats `Done`, `Complete`, and `Published` as publishable, `Preview` and `In review` as preview-only, and skips everything else.
 - `Author`: post author
 - `Description`: short SEO/meta summary
 - `Tags`: post tags
 - `Published Date`: publish date
 - `Updated Date`: optional last updated date
 - `Hero Image`: optional cover image file or external media
+- `Hero Image Alt`: optional description of the hero image for screen readers and image search
 - `SEO Notes`: internal editorial notes
 - `Target Keyword`: optional SEO target keyword
+
+Add `Hero Image Alt` as a `Text` property if the database predates it. Every
+other field already exists. Nothing else needs to be filled in for the SEO
+metadata — structured data, Open Graph tags, dates, sitemap entries, and
+`llms.txt` are all derived at build time from the fields above.
+
+## Publishing Behaviour
+
+The sync is the source of truth for every post it owns. Files it generates carry
+a `notionId` in their frontmatter; hand-authored files in `src/content/blog/`
+have none and are never rewritten or deleted.
+
+- **Publishing.** `Status = Done` makes a post live at the next run. The workflow
+  runs hourly and on every push, so expect it live within the hour.
+- **Unpublishing.** Moving a post out of `Done` (or deleting it in Notion)
+  removes its file, and the post disappears from the site, the sitemap, the feed,
+  and `llms.txt` on the next run.
+- **Preview.** `Status = Preview` builds the post at its real URL with a preview
+  banner and a `noindex` tag. It stays out of the homepage, tag pages, the feed,
+  the sitemap, and `llms.txt`, so it can be shared for review without being
+  indexed.
+- **Renaming.** Changing the `Slug` retires the old URL rather than breaking it.
+  `data/slug-history.json` records every slug a page has used and the build turns
+  retired ones into redirects to the current URL. That file is committed back by
+  CI, so do not edit it by hand.
+- **Missing `Description`.** The first ~155 characters of the post body are used
+  instead. Writing a real description is still better; the fallback only exists
+  so a forgotten field cannot ship as a broken meta description.
+- **Duplicate slugs.** Two posts resolving to the same slug would overwrite each
+  other, so the second is skipped and the run logs a warning.
+- **Failures.** If a sync or build fails, the site keeps serving the last good
+  build and the workflow opens a `blog-sync-failure` issue on the repo. Nothing
+  new publishes until it is fixed.
 
 ## Integration Steps
 

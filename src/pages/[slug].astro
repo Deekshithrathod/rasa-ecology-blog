@@ -1,10 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { render } from 'astro:content';
-import { formatDate, getPostSlug, getPostUrl, getPublishedPosts } from '../utils';
+import { DEFAULT_OG_IMAGE, SITE_TITLE, SITE_URL } from '../consts';
+import { formatDate, getPostSlug, getPostUrl, getRoutablePosts, isoDate } from '../utils';
 
 export async function getStaticPaths() {
-  const posts = await getPublishedPosts();
+  const posts = await getRoutablePosts();
 
   return posts.map((post) => ({
     params: { slug: getPostSlug(post) },
@@ -16,6 +17,55 @@ const { post } = Astro.props;
 const { Content, headings } = await render(post);
 const tocHeadings = headings.filter((heading) => heading.depth >= 1 && heading.depth <= 3);
 const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.site).toString();
+
+const isPreview = post.data.status === 'Preview';
+const authorUrl = new URL(`/authors/${post.data.author.toLowerCase()}/`, SITE_URL).toString();
+const publishedAt = post.data.publishedAt;
+const updatedAt = post.data.updatedAt ?? publishedAt;
+const socialImage = post.data.ogImage ?? post.data.heroImage ?? DEFAULT_OG_IMAGE;
+const absoluteImage = socialImage.startsWith('http')
+  ? socialImage
+  : new URL(socialImage, SITE_URL).toString();
+
+// Google truncates headline past ~110 characters and flags longer ones.
+const headline =
+  post.data.title.length > 110 ? `${post.data.title.slice(0, 109).trimEnd()}…` : post.data.title;
+
+const schema = [
+  {
+    '@type': 'BlogPosting',
+    '@id': `${canonicalUrl}#article`,
+    headline,
+    name: post.data.title,
+    description: post.data.description,
+    datePublished: isoDate(publishedAt),
+    dateModified: isoDate(updatedAt),
+    author: {
+      '@type': 'Person',
+      '@id': `${authorUrl}#person`,
+      name: post.data.author,
+      url: authorUrl,
+    },
+    publisher: { '@id': `${SITE_URL}/#organization` },
+    isPartOf: { '@id': `${SITE_URL}/#website` },
+    mainEntityOfPage: { '@type': 'WebPage', '@id': canonicalUrl },
+    image: absoluteImage,
+    inLanguage: 'en',
+    wordCount: post.body?.trim().split(/\s+/).filter(Boolean).length,
+    ...(post.data.tags.length > 0 && {
+      keywords: post.data.tags,
+      articleSection: post.data.tags[0],
+    }),
+  },
+  {
+    '@type': 'BreadcrumbList',
+    '@id': `${canonicalUrl}#breadcrumbs`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: SITE_TITLE, item: `${SITE_URL}/` },
+      { '@type': 'ListItem', position: 2, name: post.data.title, item: canonicalUrl },
+    ],
+  },
+];
 ---
 
 <BaseLayout
@@ -24,7 +74,16 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
   canonicalUrl={canonicalUrl}
   ogTitle={post.data.ogTitle ?? post.data.title}
   ogDescription={post.data.ogDescription ?? post.data.description}
-  ogImage={post.data.ogImage ?? post.data.heroImage}
+  ogImage={socialImage}
+  ogType="article"
+  noindex={isPreview}
+  article={{
+    publishedTime: isoDate(publishedAt),
+    modifiedTime: isoDate(updatedAt),
+    author: post.data.author,
+    tags: post.data.tags,
+  }}
+  schema={isPreview ? [] : schema}
 >
   <article class="article">
     {
@@ -67,11 +126,27 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
         </>
       )
     }
+    {
+      isPreview && (
+        <p class="preview-banner" role="status">
+          <strong>Preview.</strong> This post is not published yet. It is hidden from the
+          homepage, the feed, and search engines until its status in Notion is set to Done.
+        </p>
+      )
+    }
+
     <header class="article-header">
       <h1>{post.data.title}</h1>
       <div class="meta">
-        by <a href={`/authors/${post.data.author.toLowerCase()}/`}>{post.data.author}</a> | 
-        <span>{formatDate(post.data.publishedAt)}</span>
+        by <a href={`/authors/${post.data.author.toLowerCase()}/`} rel="author">{post.data.author}</a> |
+        <time datetime={isoDate(publishedAt)}>{formatDate(publishedAt)}</time>
+        {
+          updatedAt.valueOf() !== publishedAt.valueOf() && (
+            <span>
+              {' '}(updated <time datetime={isoDate(updatedAt)}>{formatDate(updatedAt)}</time>)
+            </span>
+          )
+        }
       </div>
     </header>
 
@@ -81,6 +156,9 @@ const canonicalUrl = post.data.canonicalUrl ?? new URL(getPostUrl(post), Astro.s
           class="article-hero"
           src={post.data.heroImage}
           alt={post.data.heroImageAlt ?? ''}
+          loading="eager"
+          fetchpriority="high"
+          decoding="async"
         />
       )
     }

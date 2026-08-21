@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { formatDate, getPostUrl, getPublishedPosts } from '../../utils';
+import { SITE_URL } from '../../consts';
+import { formatDate, getPostUrl, getPublishedPosts, isoDate } from '../../utils';
 
 export async function getStaticPaths() {
   const posts = await getPublishedPosts();
@@ -16,16 +17,46 @@ export async function getStaticPaths() {
 }
 
 const { tag, posts } = Astro.props;
+const tagUrl = new URL(`/tags/${tag.toLowerCase().replaceAll(' ', '-')}/`, SITE_URL).toString();
+
+const schema = [
+  {
+    '@type': 'CollectionPage',
+    '@id': `${tagUrl}#collection`,
+    url: tagUrl,
+    name: `Posts tagged ${tag}`,
+    description: `Rasa Ecology articles tagged ${tag}.`,
+    isPartOf: { '@id': `${SITE_URL}/#website` },
+    about: { '@type': 'Thing', name: tag },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: posts.length,
+      itemListElement: posts.map((post, index) => ({
+        '@type': 'ListItem',
+        position: index + 1,
+        name: post.data.title,
+        url: new URL(getPostUrl(post), SITE_URL).toString(),
+      })),
+    },
+  },
+];
 ---
 
-<BaseLayout title={`Posts tagged ${tag}`} description={`Rasa Ecology articles tagged ${tag}.`}>
+<BaseLayout
+  title={`Posts tagged ${tag}`}
+  description={`Rasa Ecology articles tagged ${tag}.`}
+  canonicalUrl={tagUrl}
+  schema={schema}
+>
   <h1 class="section-heading">Posts tagged {tag}</h1>
   <div class="listing">
     {
       posts.map((post) => (
         <article>
           <div class="meta">
-            <span>{formatDate(post.data.publishedAt)}</span>
+            <time datetime={isoDate(post.data.publishedAt)}>
+              {formatDate(post.data.publishedAt)}
+            </time>
             <span>{post.data.author}</span>
           </div>
           <h2>

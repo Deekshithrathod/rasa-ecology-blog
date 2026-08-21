@@ -516,3 +516,17 @@ img {
 		transform: none;
 	}
 }
+
+.preview-banner {
+	background: var(--color-band);
+	border: 1px solid var(--color-border);
+	border-radius: 8px;
+	color: var(--color-text);
+	font-size: 0.95rem;
+	margin: 0 0 28px;
+	padding: 14px 18px;
+}
+
+.preview-banner strong {
+	color: var(--color-accent-strong);
+}

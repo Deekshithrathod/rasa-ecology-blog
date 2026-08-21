@@ -1,6 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import { formatDate, getPostUrl, getPublishedPosts } from '../../utils';
+import { SITE_URL } from '../../consts';
+import { formatDate, getPostUrl, getPublishedPosts, isoDate } from '../../utils';
 
 export async function getStaticPaths() {
   const posts = await getPublishedPosts();
@@ -16,16 +17,44 @@ export async function getStaticPaths() {
 }
 
 const { author, posts } = Astro.props;
+const authorUrl = new URL(`/authors/${author.toLowerCase()}/`, SITE_URL).toString();
+
+// The Person node is what ties every BlogPosting's author back to a real page
+// on this site, which is the part search engines and LLMs use for attribution.
+const schema = [
+  {
+    '@type': 'ProfilePage',
+    '@id': `${authorUrl}#profile`,
+    url: authorUrl,
+    name: `Posts by ${author}`,
+    isPartOf: { '@id': `${SITE_URL}/#website` },
+    mainEntity: { '@id': `${authorUrl}#person` },
+  },
+  {
+    '@type': 'Person',
+    '@id': `${authorUrl}#person`,
+    name: author,
+    url: authorUrl,
+    worksFor: { '@id': `${SITE_URL}/#organization` },
+  },
+];
 ---
 
-<BaseLayout title={`Posts by ${author}`} description={`Rasa Ecology articles by ${author}.`}>
+<BaseLayout
+  title={`Posts by ${author}`}
+  description={`Rasa Ecology articles by ${author}.`}
+  canonicalUrl={authorUrl}
+  schema={schema}
+>
   <h1 class="section-heading">Posts by {author}</h1>
   <div class="listing">
     {
       posts.map((post) => (
         <article>
           <div class="meta">
-            <span>{formatDate(post.data.publishedAt)}</span>
+            <time datetime={isoDate(post.data.publishedAt)}>
+              {formatDate(post.data.publishedAt)}
+            </time>
           </div>
           <h2>
             <a href={getPostUrl(post)}>{post.data.title}</a>
